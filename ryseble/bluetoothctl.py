@@ -1,5 +1,9 @@
 import asyncio
 import subprocess
+import logging
+import re
+
+_LOGGER = logging.getLogger(__name__)
 
 def close_process(process):
     process.stdin.close()
