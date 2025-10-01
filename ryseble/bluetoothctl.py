@@ -115,3 +115,74 @@ async def get_first_manufacturer_data_byte(mac_address: str) -> int:
                 if hex_str:
                     return int(hex_str.group(1), 16)
     return None
+
+async def pair_with_ble_device(device_name: str, device_address: str) -> bool:
+    """Attempt to pair with a BLE device using bluetoothctl with retries."""
+
+    max_retries = 3
+    retry_count = 0
+
+    while retry_count < max_retries:
+        try:
+            # Start bluetoothctl in interactive mode
+            process = start_bluetoothctl()
+            await send_command_in_process(process, f"trust {device_address}", delay=1)
+            await send_command_in_process(process, f"connect {device_address}", delay=2)
+            await send_command_in_process(process, "yes", delay=7)
+
+            idc = await is_device_connected(device_address)
+            idp = await is_device_paired(device_address)
+
+            if idc and not idp:
+                await send_command_in_process(process, f"pair {device_address}", delay=7)
+
+            await send_command_in_process(process, "exit", delay=1)
+            close_process(process)
+
+            # Verify connection/bond status
+            idc = await is_device_connected(device_address)
+            idb = await is_device_bonded(device_address)
+            idp = await is_device_paired(device_address)
+
+            if idc and idb and idp:
+                _LOGGER.debug(f"Connected, Paired and Bonded to {device_address}")
+                return True
+            else:
+                _LOGGER.error(f"Failed to connect and bond(attempt {retry_count + 1})")
+                _LOGGER.error(f"Connected? {idc} \t Paired? {idp} \t Bonded? {idb}")
+
+        except Exception as e:
+            _LOGGER.error(f"Connection error (attempt {retry_count + 1}): {e}")
+
+        retry_count += 1
+        await asyncio.sleep(3)  # Wait before retrying
+
+    return False
+
+async def filter_ryse_devices_pairing(devices, existing_addresses: set) -> dict:
+    """Filter BLE RYSE devices and return only those in pairing mode."""
+    device_options = {}
+
+    for device in devices:
+        if not device.name:
+            continue  # Ignore unnamed devices
+        if device.address in existing_addresses:
+            _LOGGER.debug(f"Skipping already configured device: {device.name} ({device.address})")
+            continue  # Skip already configured devices
+
+        manufacturer_data = device.details["props"].get("ManufacturerData", {})
+        raw_data = manufacturer_data.get(0x0409)  # 0x0409 == 1033
+
+        if raw_data is not None:
+            btctlMfgdata0 = await get_first_manufacturer_data_byte(device.address)
+            _LOGGER.debug(f"Found RYSE Device in Pairing mode: {device.name} - address: {device.address} - btctlMfgdata0 {btctlMfgdata0}")
+            # Check if the pairing mode flag (0x40) is in the first byte
+            if (
+                len(raw_data) > 0
+                and btctlMfgdata0 is not None
+                and (btctlMfgdata0 & 0x40)
+            ):
+                device_options[device.address] = (f"{device.name} ({device.address})")
+
+    return device_options
+
