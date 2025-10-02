@@ -23,17 +23,20 @@ class RyseBLEDevice:
         if not self.address:
             _LOGGER.error("No device address provided for pairing.")
             return False
-        _LOGGER.debug(f"Pairing with device {self.address}")
+        _LOGGER.debug("Pairing with device %s",
+                      self.address)
         self.client = BleakClient(self.address)
         try:
             await self.client.connect(timeout=30.0)
             if self.client.is_connected:
-                _LOGGER.debug(f"Successfully paired with {self.address}")
+                _LOGGER.debug("Successfully paired with %s",
+                              self.address)
                 # Subscribe to notifications
                 await self.client.start_notify(self.rx_uuid, self._notification_handler)
                 return True
         except Exception as e:
-            _LOGGER.error(f"Error pairing with device {self.address}: {e}", exc_info=True)
+            _LOGGER.error("Error pairing with device %s: %s",
+                          self.address, e)
         return False
 
     async def _notification_handler(self, sender, data):
@@ -44,7 +47,8 @@ class RyseBLEDevice:
         _LOGGER.debug("Received notification")
         if len(data) >= 5 and data[0] == 0xF5 and data[2] == 0x01 and data[3] == 0x07:
             new_position = data[4]  # Extract the position byte
-            _LOGGER.debug(f"Received valid notification, updating position: {new_position}")
+            _LOGGER.debug("Received valid notification, updating position: %d",
+                          new_position)
 
             # Notify cover.py about the position update
             if hasattr(self, "update_callback"):
@@ -57,7 +61,7 @@ class RyseBLEDevice:
                 _LOGGER.debug("Getting Manufacturer Data")
                 return manufacturer_data
             except Exception as e:
-                _LOGGER.error(f"Failed to get device info: {e}")
+                _LOGGER.error("Failed to get device info: %s", e)
         return None
 
     async def unpair(self):
@@ -84,9 +88,11 @@ class RyseBLEDevice:
         _LOGGER.debug("Scanning for BLE devices...")
         devices = await BleakScanner.discover()
         for device in devices:
-            _LOGGER.debug(f"Found device: {device.name} ({device.address})")
+            _LOGGER.debug("Found device: %s (%s)",
+                          device.name, device.address)
             if device.name and "target-device-name" in device.name.lower():
-                _LOGGER.debug(f"Attempting to pair with {device.name} ({device.address})")
+                _LOGGER.debug("Attempting to pair with %s (%s)",
+                              device.name, device.address)
                 self.address = device.address
                 return await self.pair()
         _LOGGER.warning("No suitable devices found to pair")

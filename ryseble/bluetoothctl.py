@@ -145,14 +145,18 @@ async def pair_with_ble_device(device_name: str, device_address: str) -> bool:
             idp = await is_device_paired(device_address)
 
             if idc and idb and idp:
-                _LOGGER.debug(f"Connected, Paired and Bonded to {device_address}")
+                _LOGGER.debug("Connected, Paired and Bonded to %s",
+                              device_address)
                 return True
             else:
-                _LOGGER.error(f"Failed to connect and bond(attempt {retry_count + 1})")
-                _LOGGER.error(f"Connected? {idc} \t Paired? {idp} \t Bonded? {idb}")
+                _LOGGER.error("Failed to connect and bond(attempt %d)",
+                              retry_count+1)
+                _LOGGER.error("Connected? %s \t Paired? %s \t Bonded? %s",
+                              idc, idp, idb)
 
         except Exception as e:
-            _LOGGER.error(f"Connection error (attempt {retry_count + 1}): {e}")
+            _LOGGER.error("Connection error (attempt %d): %s",
+                          retry_count+1, e)
 
         retry_count += 1
         await asyncio.sleep(3)  # Wait before retrying
@@ -167,7 +171,8 @@ async def filter_ryse_devices_pairing(devices, existing_addresses: set) -> dict:
         if not device.name:
             continue  # Ignore unnamed devices
         if device.address in existing_addresses:
-            _LOGGER.debug(f"Skipping already configured device: {device.name} ({device.address})")
+            _LOGGER.debug("Skipping already configured device: %s (%s)",
+                          device.name, device.address)
             continue  # Skip already configured devices
 
         manufacturer_data = device.details["props"].get("ManufacturerData", {})
@@ -175,7 +180,8 @@ async def filter_ryse_devices_pairing(devices, existing_addresses: set) -> dict:
 
         if raw_data is not None:
             btctlMfgdata0 = await get_first_manufacturer_data_byte(device.address)
-            _LOGGER.debug(f"Found RYSE Device in Pairing mode: {device.name} - address: {device.address} - btctlMfgdata0 {btctlMfgdata0}")
+            _LOGGER.debug("Found RYSE Device in Pairing mode: %s - address: %s - btctlMfgdata0 %02X",
+                          device.name, device.address, btctlMfgdata0)
             # Check if the pairing mode flag (0x40) is in the first byte
             if (
                 len(raw_data) > 0
