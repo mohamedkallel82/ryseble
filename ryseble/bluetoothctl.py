@@ -5,11 +5,13 @@ import re
 
 _LOGGER = logging.getLogger(__name__)
 
+
 def close_process(process):
     process.stdin.close()
     process.stdout.close()
     process.stderr.close()
     process.wait()
+
 
 async def run_command(command):
     """Run a bluetoothctl command and return the output."""
@@ -32,6 +34,7 @@ async def run_command(command):
         await proc.wait()
         raise RuntimeError(f"Command failed: {command} - {str(e)}")
 
+
 def start_bluetoothctl():
     """Start bluetoothctl as an interactive process."""
     return subprocess.Popen(
@@ -43,11 +46,13 @@ def start_bluetoothctl():
         bufsize=1024,
     )
 
+
 async def send_command_in_process(process, command, delay=2):
     """Send a command to the bluetoothctl process and wait for a response."""
     process.stdin.write(f"{command}\n")
     process.stdin.flush()
     await asyncio.sleep(delay)
+
 
 async def is_device_connected(address):
     """Check if a Bluetooth device is connected by its MAC address."""
@@ -60,6 +65,7 @@ async def is_device_connected(address):
             return True
     return False
 
+
 async def is_device_bonded(address):
     """Check if a Bluetooth device is bonded by its MAC address."""
     cmdout = await run_command("devices Bonded")
@@ -71,6 +77,7 @@ async def is_device_bonded(address):
             return True
     return False
 
+
 async def is_device_paired(address):
     """Check if a Bluetooth device is paired by its MAC address."""
     cmdout = await run_command("devices Paired")
@@ -81,6 +88,7 @@ async def is_device_paired(address):
         if line.lower().startswith(b"device " + target_address):
             return True
     return False
+
 
 async def get_first_manufacturer_data_byte(mac_address: str) -> int:
     """
@@ -116,6 +124,7 @@ async def get_first_manufacturer_data_byte(mac_address: str) -> int:
                     return int(hex_str.group(1), 16)
     return None
 
+
 async def pair_with_ble_device(device_name: str, device_address: str) -> bool:
     """Attempt to pair with a BLE device using bluetoothctl with retries."""
 
@@ -134,7 +143,11 @@ async def pair_with_ble_device(device_name: str, device_address: str) -> bool:
             idp = await is_device_paired(device_address)
 
             if idc and not idp:
-                await send_command_in_process(process, f"pair {device_address}", delay=7)
+                await send_command_in_process(
+                    process,
+                    f"pair {device_address}",
+                    delay=7,
+                )
 
             await send_command_in_process(process, "exit", delay=1)
             close_process(process)
@@ -145,23 +158,35 @@ async def pair_with_ble_device(device_name: str, device_address: str) -> bool:
             idp = await is_device_paired(device_address)
 
             if idc and idb and idp:
-                _LOGGER.debug("Connected, Paired and Bonded to %s",
-                              device_address)
+                _LOGGER.debug(
+                    "Connected, Paired and Bonded to %s",
+                    device_address,
+                )
                 return True
             else:
-                _LOGGER.error("Failed to connect and bond(attempt %d)",
-                              retry_count+1)
-                _LOGGER.error("Connected? %s \t Paired? %s \t Bonded? %s",
-                              idc, idp, idb)
+                _LOGGER.error(
+                    "Failed to connect and bond(attempt %d)",
+                    retry_count + 1,
+                )
+                _LOGGER.error(
+                    "Connected? %s \t Paired? %s \t Bonded? %s",
+                    idc,
+                    idp,
+                    idb,
+                )
 
         except Exception as e:
-            _LOGGER.error("Connection error (attempt %d): %s",
-                          retry_count+1, e)
+            _LOGGER.error(
+                "Connection error (attempt %d): %s",
+                retry_count + 1,
+                e,
+            )
 
         retry_count += 1
         await asyncio.sleep(3)  # Wait before retrying
 
     return False
+
 
 async def filter_ryse_devices_pairing(devices, existing_addresses: set) -> dict:
     """Filter BLE RYSE devices and return only those in pairing mode."""
@@ -171,8 +196,11 @@ async def filter_ryse_devices_pairing(devices, existing_addresses: set) -> dict:
         if not device.name:
             continue  # Ignore unnamed devices
         if device.address in existing_addresses:
-            _LOGGER.debug("Skipping already configured device: %s (%s)",
-                          device.name, device.address)
+            _LOGGER.debug(
+                "Skipping already configured device: %s (%s)",
+                device.name,
+                device.address,
+            )
             continue  # Skip already configured devices
 
         manufacturer_data = device.details["props"].get("ManufacturerData", {})
@@ -180,15 +208,18 @@ async def filter_ryse_devices_pairing(devices, existing_addresses: set) -> dict:
 
         if raw_data is not None:
             btctlMfgdata0 = await get_first_manufacturer_data_byte(device.address)
-            _LOGGER.debug("Found RYSE Device in Pairing mode: %s - address: %s - btctlMfgdata0 %02X",
-                          device.name, device.address, btctlMfgdata0)
+            _LOGGER.debug(
+                "Found RYSE Device in Pairing mode: %s - address: %s - btctlMfgdata0 %02X",
+                device.name,
+                device.address,
+                btctlMfgdata0,
+            )
             # Check if the pairing mode flag (0x40) is in the first byte
             if (
                 len(raw_data) > 0
                 and btctlMfgdata0 is not None
                 and (btctlMfgdata0 & 0x40)
             ):
-                device_options[device.address] = (f"{device.name} ({device.address})")
+                device_options[device.address] = f"{device.name} ({device.address})"
 
     return device_options
-

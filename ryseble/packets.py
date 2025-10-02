@@ -24,4 +24,3 @@ def build_get_position_packet() -> bytes:
 
     # Append checksum
     return data_bytes + bytes([checksum])
-

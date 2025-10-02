@@ -10,8 +10,10 @@ import logging
 
 _LOGGER = logging.getLogger(__name__)
 
+
 class RyseBLEDevice:
     """Represent a RYSE device and provide async methods to interact with it."""
+
     def __init__(self, address=None, rx_uuid=None, tx_uuid=None):
         self.address = address
         self.rx_uuid = rx_uuid
@@ -23,20 +25,27 @@ class RyseBLEDevice:
         if not self.address:
             _LOGGER.error("No device address provided for pairing.")
             return False
-        _LOGGER.debug("Pairing with device %s",
-                      self.address)
+        _LOGGER.debug(
+            "Pairing with device %s",
+            self.address,
+        )
         self.client = BleakClient(self.address)
         try:
             await self.client.connect(timeout=30.0)
             if self.client.is_connected:
-                _LOGGER.debug("Successfully paired with %s",
-                              self.address)
+                _LOGGER.debug(
+                    "Successfully paired with %s",
+                    self.address,
+                )
                 # Subscribe to notifications
                 await self.client.start_notify(self.rx_uuid, self._notification_handler)
                 return True
         except Exception as e:
-            _LOGGER.error("Error pairing with device %s: %s",
-                          self.address, e)
+            _LOGGER.error(
+                "Error pairing with device %s: %s",
+                self.address,
+                e,
+            )
         return False
 
     async def _notification_handler(self, sender, data):
@@ -47,8 +56,10 @@ class RyseBLEDevice:
         _LOGGER.debug("Received notification")
         if len(data) >= 5 and data[0] == 0xF5 and data[2] == 0x01 and data[3] == 0x07:
             new_position = data[4]  # Extract the position byte
-            _LOGGER.debug("Received valid notification, updating position: %d",
-                          new_position)
+            _LOGGER.debug(
+                "Received valid notification, updating position: %d",
+                new_position,
+            )
 
             # Notify cover.py about the position update
             if hasattr(self, "update_callback"):
@@ -88,11 +99,17 @@ class RyseBLEDevice:
         _LOGGER.debug("Scanning for BLE devices...")
         devices = await BleakScanner.discover()
         for device in devices:
-            _LOGGER.debug("Found device: %s (%s)",
-                          device.name, device.address)
+            _LOGGER.debug(
+                "Found device: %s (%s)",
+                device.name,
+                device.address,
+            )
             if device.name and "target-device-name" in device.name.lower():
-                _LOGGER.debug("Attempting to pair with %s (%s)",
-                              device.name, device.address)
+                _LOGGER.debug(
+                    "Attempting to pair with %s (%s)",
+                    device.name,
+                    device.address,
+                )
                 self.address = device.address
                 return await self.pair()
         _LOGGER.warning("No suitable devices found to pair")
