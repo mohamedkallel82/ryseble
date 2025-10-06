@@ -1,5 +1,4 @@
 
-# === README.md ===
 # ryseble
 
 A small Python library to interact with RYSE BLE Smart Shade devices. Designed to be
