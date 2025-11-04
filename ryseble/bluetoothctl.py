@@ -188,7 +188,7 @@ async def pair_with_ble_device(device_name: str, device_address: str) -> bool:
     return False
 
 
-async def filter_ryse_devices_pairing(devices, existing_addresses: set) -> dict:
+async def filter_ryse_devices_pairing(devices, existing_addresses: set[str]) -> dict[str, str]:
     """Filter BLE RYSE devices and return only those in pairing mode."""
     device_options = {}
 
@@ -203,23 +203,23 @@ async def filter_ryse_devices_pairing(devices, existing_addresses: set) -> dict:
             )
             continue  # Skip already configured devices
 
-        manufacturer_data = device.details["props"].get("ManufacturerData", {})
-        raw_data = manufacturer_data.get(0x0409)  # 0x0409 == 1033
+        manufacturer_data = getattr(device, "manufacturer_data", None)
+        raw_data = manufacturer_data.get(0x0409) if manufacturer_data else None
+        if raw_data is None:
+            continue
 
-        if raw_data is not None:
-            btctlMfgdata0 = await get_first_manufacturer_data_byte(device.address)
+        btctlMfgdata0 = await get_first_manufacturer_data_byte(device.address)
+        if (
+            len(raw_data) > 0
+            and btctlMfgdata0 is not None
+            and (btctlMfgdata0 & 0x40)
+        ):
+            device_options[device.address] = f"{device.name} ({device.address})"
             _LOGGER.debug(
-                "Found RYSE Device in Pairing mode: %s - address: %s - btctlMfgdata0 %02X",
+                "Found RYSE in pairing mode: %s (%s) btctlMfgdata0=%02X",
                 device.name,
                 device.address,
                 btctlMfgdata0,
             )
-            # Check if the pairing mode flag (0x40) is in the first byte
-            if (
-                len(raw_data) > 0
-                and btctlMfgdata0 is not None
-                and (btctlMfgdata0 & 0x40)
-            ):
-                device_options[device.address] = f"{device.name} ({device.address})"
 
     return device_options

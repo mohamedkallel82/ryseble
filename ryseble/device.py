@@ -4,8 +4,9 @@ This module intentionally keeps responsibilities small: connect/disconnect,
 read/write GATT characteristics, and deliver notifications via a callback.
 """
 
-import asyncio
 from bleak import BleakClient, BleakScanner
+from .constants import HARDCODED_UUIDS
+from .packets import build_position_packet, build_get_position_packet
 import logging
 
 _LOGGER = logging.getLogger(__name__)
@@ -16,8 +17,8 @@ class RyseBLEDevice:
 
     def __init__(self, address=None, rx_uuid=None, tx_uuid=None):
         self.address = address
-        self.rx_uuid = rx_uuid
-        self.tx_uuid = tx_uuid
+        self.rx_uuid = rx_uuid or HARDCODED_UUIDS["rx_uuid"]
+        self.tx_uuid = tx_uuid or HARDCODED_UUIDS["tx_uuid"]
         self.client = None
 
     async def pair(self):
@@ -95,6 +96,14 @@ class RyseBLEDevice:
             await self.client.write_gatt_char(self.tx_uuid, data)
             _LOGGER.debug("Sending data to tx uuid")
 
+    async def send_set_position(self, position):
+        pdata = build_position_packet(position)
+        await self.write_data(pdata)
+
+    async def send_get_position(self):
+        bytesinfo = build_get_position_packet()
+        await self.write_data(bytesinfo)
+
     async def scan_and_pair(self):
         _LOGGER.debug("Scanning for BLE devices...")
         devices = await BleakScanner.discover()
@@ -114,3 +123,12 @@ class RyseBLEDevice:
                 return await self.pair()
         _LOGGER.warning("No suitable devices found to pair")
         return False
+
+    def is_valid_position(self, position):
+        return (0 <= position <= 100)
+    
+    def get_real_position(self, position):
+        return (100 - position)
+    
+    def is_closed(self, position):
+        return (position == 100)
