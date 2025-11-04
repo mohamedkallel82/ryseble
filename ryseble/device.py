@@ -132,3 +132,9 @@ class RyseBLEDevice:
     
     def is_closed(self, position):
         return (position == 100)
+
+    async def send_open(self):
+        await self.send_set_position(0)
+
+    async def send_close(self):
+        await self.send_set_position(100)
