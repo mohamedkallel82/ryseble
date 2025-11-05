@@ -13,7 +13,7 @@ Modules:
 
 from .device import RyseBLEDevice
 from .packets import build_position_packet, build_get_position_packet
-from .constants import HARDCODED_UUIDS, PAIRING_MODE_FLAG
+from .constants import HARDCODED_UUIDS
 from . import bluetoothctl
 
 __all__ = [
@@ -21,6 +21,5 @@ __all__ = [
     "build_position_packet",
     "build_get_position_packet",
     "HARDCODED_UUIDS",
-    "PAIRING_MODE_FLAG",
     "bluetoothctl",
 ]
