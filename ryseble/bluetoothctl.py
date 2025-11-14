@@ -223,3 +223,16 @@ async def filter_ryse_devices_pairing(devices, existing_addresses: set[str]) -> 
             )
 
     return device_options
+
+async def is_pairing_ryse_device(address: str) -> bool:
+    """Return True if the device has valid RYSE manufacturer data."""
+    try:
+        btctlMfgdata0 = await get_first_manufacturer_data_byte(address)
+    except Exception:
+        # Optional: log inside library or ignore
+        return False
+
+    if btctlMfgdata0 is None:
+        return False
+
+    return bool(btctlMfgdata0 & 0x40)
